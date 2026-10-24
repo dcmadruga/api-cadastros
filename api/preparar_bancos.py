@@ -14,7 +14,9 @@ import os
 import sys
 from pathlib import Path
 
-from dotenv import load_dotenv, set_key
+from dotenv import set_key
+
+from app.config import carregar_env
 
 BASE = Path(__file__).resolve().parent
 os.chdir(BASE)
@@ -24,9 +26,11 @@ INSTALADOR = "--instalador" in sys.argv
 ENV = BASE / ".env"
 if not ENV.exists():
     ENV.write_text((BASE / ".env.example").read_text(encoding="utf-8"), encoding="utf-8")
-load_dotenv(ENV)
+carregar_env(ENV)
 
 if not os.getenv("DB_PASSWORD") and not INSTALADOR:
+    from app.config import ler_texto
+    ENV.write_text(ler_texto(ENV), encoding="utf-8")  # set_key exige UTF-8
     print(f"Conectando no PostgreSQL em {os.getenv('DB_HOST', 'localhost')}:{os.getenv('DB_PORT', '5432')} "
           f"com o usuário '{os.getenv('DB_USER', 'postgres')}'.")
     senha = getpass.getpass("Digite a senha do PostgreSQL (não aparece enquanto digita) e tecle Enter: ")

@@ -6,9 +6,13 @@ precisa terminar com "_test"; caso contrário os testes nem começam.
 """
 import os
 
-from dotenv import load_dotenv
+import sys
+from pathlib import Path
 
-load_dotenv()
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from app.config import carregar_env  # noqa: E402
+
+carregar_env()
 NOME_BANCO_TESTE = os.getenv("DB_TEST_NAME", "api_test")
 if not NOME_BANCO_TESTE.endswith("_test"):
     raise SystemExit(f"Recusado: o banco de teste '{NOME_BANCO_TESTE}' precisa terminar com '_test'.")
@@ -141,3 +145,12 @@ def test_unidade_produto(client):
 def test_campo_obrigatorio_nulo_na_edicao(client):
     c = client.post("/clientes", json={"nome": "Fulano"}).json()
     assert client.patch(f"/clientes/{c['id']}", json={"nome": None}).status_code == 422
+
+
+def test_env_em_cp1252_e_utf8(tmp_path):
+    from app.config import ler_texto
+    texto = "# Configuração\nDB_PASSWORD='ção@1'\n"
+    for cod in ("cp1252", "utf-8", "utf-8-sig"):
+        arq = tmp_path / f"env_{cod}"
+        arq.write_bytes(texto.encode(cod))
+        assert ler_texto(arq) == texto

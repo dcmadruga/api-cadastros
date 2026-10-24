@@ -39,6 +39,7 @@ aplica as migrações pendentes no banco (sem apagar dados) e liga o serviço de
 - Serviço: "API de Cadastros" (services.msc). Atalhos no Menu Iniciar → API de Cadastros.
 - Configuração: `C:\Program Files\ApiCadastros\.env` (atalho "Configurar conexão"; depois "Reiniciar API").
 - Registro de funcionamento: `C:\Program Files\ApiCadastros\logs\api.log`.
+- Registro da instalação (passos, saídas e erros): `C:\ProgramData\ApiCadastros\instalacao.txt`.
 
 ### Endpoints
 

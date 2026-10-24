@@ -16,9 +16,9 @@ sys.path.insert(0, str(BASE))
 log = open(BASE / "logs" / "api.log", "a", encoding="utf-8", buffering=1)
 sys.stdout = sys.stderr = log
 
-from dotenv import load_dotenv  # noqa: E402
+from app.config import carregar_env  # noqa: E402
 
-load_dotenv(BASE / ".env")
+carregar_env(BASE / ".env")
 HOST = os.getenv("API_HOST", "127.0.0.1")
 PORTA = int(os.getenv("API_PORT", "8000"))
 

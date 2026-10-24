@@ -1,10 +1,11 @@
 import os
 
-from dotenv import load_dotenv
 from sqlalchemy import URL, create_engine
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
-load_dotenv()
+from .config import carregar_env  # noqa: E402
+
+carregar_env()
 
 
 def montar_url(nome_banco: str | None = None):
