@@ -1,0 +1,21 @@
+<!-- Configuração do serviço do Windows "API de Cadastros" (WinSW 2.12) -->
+<service>
+  <id>ApiCadastros</id>
+  <name>API de Cadastros</name>
+  <description>API de clientes, produtos e fornecedores (PostgreSQL). Documentação em http://localhost:PORTA/docs</description>
+  <executable>%BASE%\.venv\Scripts\python.exe</executable>
+  <arguments>"%BASE%\servidor.pyw"</arguments>
+  <workingdirectory>%BASE%</workingdirectory>
+  <startmode>Automatic</startmode>
+  <delayedAutoStart>true</delayedAutoStart>
+  <onfailure action="restart" delay="10 sec"/>
+  <onfailure action="restart" delay="30 sec"/>
+  <onfailure action="restart" delay="60 sec"/>
+  <resetfailure>1 hour</resetfailure>
+  <stoptimeout>15 sec</stoptimeout>
+  <logpath>%BASE%\logs</logpath>
+  <log mode="roll-by-size">
+    <sizeThreshold>10240</sizeThreshold>
+    <keepFiles>5</keepFiles>
+  </log>
+</service>
