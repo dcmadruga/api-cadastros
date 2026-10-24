@@ -119,3 +119,25 @@ def test_paginacao(client):
     r = client.get("/fornecedores", params={"skip": 2, "limit": 2})
     assert [x["nome"] for x in r.json()] == ["Fornecedor 2", "Fornecedor 3"]
     assert r.headers["X-Total-Count"] == "5"
+
+
+def test_unidade_produto(client):
+    # padrão UN quando não informada
+    p = client.post("/produtos", json={"nome": "Parafuso"}).json()
+    assert p["unidade"] == "UN"
+    # aceita e padroniza em maiúsculas
+    r = client.post("/produtos", json={"nome": "Arroz", "unidade": " kg "})
+    assert r.status_code == 201 and r.json()["unidade"] == "KG"
+    # edição
+    r = client.patch(f"/produtos/{p['id']}", json={"unidade": "cx"})
+    assert r.json()["unidade"] == "CX"
+    # inválidas: vazia, longa demais, nula
+    assert client.post("/produtos", json={"nome": "X", "unidade": "  "}).status_code == 422
+    assert client.post("/produtos", json={"nome": "X", "unidade": "UNIDADE-GRANDE"}).status_code == 422
+    assert client.patch(f"/produtos/{p['id']}", json={"unidade": None}).status_code == 422
+    assert client.get(f"/produtos/{p['id']}").json()["unidade"] == "CX"
+
+
+def test_campo_obrigatorio_nulo_na_edicao(client):
+    c = client.post("/clientes", json={"nome": "Fulano"}).json()
+    assert client.patch(f"/clientes/{c['id']}", json={"nome": None}).status_code == 422

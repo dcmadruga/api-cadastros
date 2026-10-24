@@ -62,6 +62,7 @@ class Produto(Timestamps, Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     nome: Mapped[str] = mapped_column(String(150), index=True)
     codigo: Mapped[str | None] = mapped_column(String(50), unique=True)
+    unidade: Mapped[str] = mapped_column(String(10), default="UN", server_default="UN")
     descricao: Mapped[str | None] = mapped_column(Text)
     preco: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
     estoque: Mapped[int] = mapped_column(default=0)

@@ -52,6 +52,7 @@ aplica as migrações pendentes no banco (sem apagar dados) e liga o serviço de
 
 ### Regras
 - **CPF/CNPJ + IE**: o mesmo CPF/CNPJ pode repetir com IE diferente; a mesma combinação não (409).
+- Produto tem **unidade de medida** (`unidade`: UN, KG, L, CX...; padrão UN, gravada em maiúsculas, até 10 caracteres).
 - Código de produto único (409). Excluir fornecedor com produtos: bloqueado (409).
 - E-mail inválido, preço/estoque negativo, fornecedor inexistente: 422.
 

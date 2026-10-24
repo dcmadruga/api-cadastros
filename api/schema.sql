@@ -1,4 +1,4 @@
--- Estrutura das tabelas (opcional: a API cria as tabelas sozinha ao iniciar).
+-- Estrutura das tabelas (opcional: a API e o instalador criam/atualizam as tabelas sozinhos).
 -- Para criar manualmente: psql -U seu_usuario -d seu_banco -f schema.sql
 
 CREATE TABLE public.clientes (
@@ -49,6 +49,7 @@ CREATE TABLE public.produtos (
     id integer NOT NULL,
     nome character varying(150) NOT NULL,
     codigo character varying(50),
+    unidade character varying(10) DEFAULT 'UN'::character varying NOT NULL,
     descricao text,
     preco numeric(12,2) NOT NULL,
     estoque integer NOT NULL,

@@ -23,6 +23,8 @@ def traduzir_erro_integridade(erro: IntegrityError) -> HTTPException:
     # ao tentar excluir um registro protegido por ON DELETE RESTRICT)
     if codigo in ("23503", "23001"):
         return HTTPException(status.HTTP_409_CONFLICT, "Operação viola um vínculo entre registros (ex.: fornecedor inexistente ou com produtos vinculados).")
+    if codigo == "23502":  # not_null_violation
+        return HTTPException(422, "Um campo obrigatório foi enviado vazio (null).")
     if codigo == "23514":  # check_violation
         return HTTPException(422, "Valor fora do permitido (ex.: preço ou estoque negativo).")
     return HTTPException(status.HTTP_400_BAD_REQUEST, "Dados inválidos para o banco de dados.")
