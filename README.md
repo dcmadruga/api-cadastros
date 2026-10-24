@@ -22,8 +22,8 @@ CHANGELOG.md          histórico de versões
 1. Altera-se o código em `api/` (e, se a estrutura do banco mudar, cria-se `api/migracoes/NNN_*.sql`).
 2. Os testes em `api/tests/` são ajustados/ampliados.
 3. A versão sobe em `api/app/versao.py` e a mudança é descrita no `CHANGELOG.md`.
-4. Envio para o GitHub: a automação roda os testes num PostgreSQL 18 e gera o instalador.
-5. Criando a tag `vX.Y.Z`, o instalador é publicado em **Releases**, pronto para baixar.
+4. Envio para o GitHub (branch `main`): a automação roda os testes num PostgreSQL 18 e gera o instalador.
+5. Se o número da versão for novo, a automação publica sozinha a Release `vX.Y.Z` com o instalador, pronto para baixar em **Releases**.
 
 Para atualizar um computador, basta rodar o instalador novo por cima: ele para o serviço, troca os arquivos,
 aplica as migrações pendentes no banco (sem apagar dados) e liga o serviço de novo.
