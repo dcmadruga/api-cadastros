@@ -2,6 +2,10 @@
 
 Formato: cada versão lista o que mudou. A versão oficial fica em `api/app/versao.py`.
 
+## [1.2.2] - 2026-10-24
+- Registro do serviço (`logs\api.log`) mais legível: data e hora em cada linha, versão da API na partida, erros numa linha clara e, quando o mesmo erro se repete, só uma linha curta ("repetido, Nª vez") em vez do rastro completo. O arquivo é renovado ao passar de 5 MB.
+- O instalador agora testa se a API responde depois de ligar o serviço e copia as últimas linhas do registro do serviço para o `instalacao.txt`.
+
 ## [1.2.1] - 2026-10-24
 - **Correção:** o instalador gravava o `.env` na codificação do Windows (cp1252) e a API o lia como UTF-8, o que quebrava a preparação do banco e a partida do serviço (`UnicodeDecodeError`). Agora a API aceita as duas codificações e o instalador grava o `.env` sem acentos.
 - **Registro da instalação:** cada passo, a saída de cada comando e os erros são gravados em `C:\ProgramData\ApiCadastros\instalacao.txt` (a senha nunca é registrada). Em caso de falha, o arquivo é aberto automaticamente. Cópia em `C:\Program Files\ApiCadastros\logs\instalacao.txt` e atalho "Ver registro da instalação" no Menu Iniciar.

@@ -399,6 +399,13 @@ Section "API de Cadastros como serviço (obrigatório)" SecApp
   StrCpy $R9 $0
   Sleep 4000
   !insertmacro Servico "status"
+  Sleep 3000
+  !insertmacro Rodar "Testando se a API responde em http://localhost:$ApiPort/" '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -Command "try { $$r = Invoke-WebRequest -UseBasicParsing -TimeoutSec 15 http://127.0.0.1:$ApiPort/; Write-Output (\"API respondeu: HTTP \" + $$r.StatusCode + \" \" + $$r.Content) } catch { Write-Output (\"API NAO respondeu: \" + $$_.Exception.Message); exit 1 }"'
+  ${If} $0 != 0
+    StrCpy $8 "erro"
+    !insertmacro Log "AVISO: a API ainda não respondeu; veja as últimas linhas do registro do serviço abaixo"
+  ${EndIf}
+  !insertmacro Rodar "Últimas linhas do registro do serviço (logs\api.log)" '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -Command "if (Test-Path -LiteralPath \"$INSTDIR\logs\api.log\") { Get-Content -Tail 20 -LiteralPath \"$INSTDIR\logs\api.log\" } else { Write-Output \"(registro ainda nao criado)\" }"'
   StrCpy $0 $R9
   ${If} $0 != 0
   ${AndIf} $8 == "ok"
