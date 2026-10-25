@@ -37,6 +37,8 @@ aplica as migrações pendentes no banco (sem apagar dados) e liga o serviço de
 
 - Documentação interativa: **http://localhost:8000/docs**
 - Serviço: "API de Cadastros" (services.msc). Atalhos no Menu Iniciar → API de Cadastros.
+- Banco e schema: as tabelas ficam no schema `DB_SCHEMA` (padrão `api_cadastros`) do banco `DB_NAME`; outras tabelas do banco não são tocadas.
+- Estado do banco: `GET /` mostra `banco: ok | indisponivel | bloqueado` e o motivo.
 - Configuração: `C:\Program Files\ApiCadastros\.env` (atalho "Configurar conexão"; depois "Reiniciar API").
 - Registro de funcionamento: `C:\Program Files\ApiCadastros\logs\api.log`.
 - Registro da instalação (passos, saídas e erros): `C:\ProgramData\ApiCadastros\instalacao.txt`.

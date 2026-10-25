@@ -6,7 +6,8 @@ Uso:
   python preparar_bancos.py --instalador -> modo do instalador: não pergunta nada, cria só o banco
                                             da API e as tabelas, e devolve um código de saída
 
-Códigos de saída: 0 = ok, 2 = senha recusada, 3 = servidor não encontrado, 1 = outro erro.
+Códigos de saída: 0 = ok, 2 = senha recusada, 3 = servidor não encontrado,
+4 = tabelas de outro sistema no schema (nada foi alterado), 1 = outro erro.
 Não altera nenhum outro banco.
 """
 import getpass
@@ -41,27 +42,6 @@ from sqlalchemy import create_engine, text  # noqa: E402
 
 from app.database import montar_url  # noqa: E402
 
-def aplicar_migracoes(engine):
-    """Executa, em ordem, os arquivos migracoes/NNN_*.sql que ainda não foram aplicados neste banco.
-
-    O controle fica na tabela _migracoes. Cada arquivo deve ser idempotente
-    (usar IF NOT EXISTS etc.), pois numa instalação nova as tabelas já nascem atualizadas.
-    """
-    pasta = BASE / "migracoes"
-    with engine.connect() as conn:
-        conn.exec_driver_sql(
-            "CREATE TABLE IF NOT EXISTS _migracoes ("
-            " nome varchar(200) PRIMARY KEY, aplicada_em timestamp NOT NULL DEFAULT now())"
-        )
-        feitas = {r[0] for r in conn.exec_driver_sql("SELECT nome FROM _migracoes")}
-        pendentes = [a for a in sorted(pasta.glob("*.sql")) if a.name not in feitas]
-        for arquivo in pendentes:
-            print(f"Aplicando migração {arquivo.name}...")
-            conn.exec_driver_sql(arquivo.read_text(encoding="utf-8"))
-            conn.execute(text("INSERT INTO _migracoes (nome) VALUES (:n)"), {"n": arquivo.name})
-        print(f"Migrações: {len(pendentes)} aplicada(s), {len(feitas)} já existente(s).")
-
-
 nome_api = os.getenv("DB_NAME", "api_db")
 nome_teste = os.getenv("DB_TEST_NAME", "api_test")
 if not nome_teste.endswith("_test"):
@@ -78,13 +58,17 @@ try:
             else:
                 conn.execute(text(f'CREATE DATABASE "{nome}"'))
                 print(f"Banco '{nome}' criado.")
-    # Tabelas novas + migrações pendentes no banco da API (nunca apaga dados)
-    from app import models  # noqa: F401  (registra as tabelas)
-    from app.database import Base
-    engine_api = create_engine(montar_url(nome_api))
-    Base.metadata.create_all(engine_api)
-    print(f"Tabelas conferidas no banco '{nome_api}'.")
-    aplicar_migracoes(create_engine(montar_url(nome_api), isolation_level="AUTOCOMMIT"))
+    # Schema próprio + tabelas novas + migrações pendentes no banco da API (nunca apaga dados)
+    from app.database import SCHEMA, criar_engine
+    from app.estrutura import TabelasDeOutroSistema, preparar_estrutura
+    print(f"Usando o schema '{SCHEMA}' no banco '{nome_api}'.")
+    try:
+        preparar_estrutura(criar_engine(montar_url(nome_api)))
+    except TabelasDeOutroSistema as bloqueio:
+        print("RECUSADO:", bloqueio)
+        sys.exit(4)
+except SystemExit:
+    raise
 except Exception as e:
     # SQLSTATE independe do idioma do servidor (28P01/28000 = autenticação recusada)
     codigo = getattr(getattr(e, "orig", None), "sqlstate", None) or getattr(e, "sqlstate", None)

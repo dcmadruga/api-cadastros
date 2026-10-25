@@ -27,6 +27,7 @@ jobs:
       DB_PASSWORD: "p@ss_ci:/x"
       DB_NAME: api_db
       DB_TEST_NAME: api_test
+      DB_SCHEMA: api_cadastros
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6

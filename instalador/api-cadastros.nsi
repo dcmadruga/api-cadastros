@@ -42,6 +42,10 @@ Var DbUser
 Var DbPass
 Var DbName
 Var ApiPort
+Var DbSchema
+Var hSchema
+Var EnvChave
+Var EnvValor
 Var hHost
 Var hPort
 Var hUser
@@ -146,6 +150,49 @@ Function .onInstFailed
   Exec '"$WINDIR\notepad.exe" "$LOG"'
 FunctionEnd
 
+; ---------------------------------------------------------------- Leitura do .env existente
+; Entrada: $EnvChave (ex.: DB_NAME). Saída: $EnvValor (vazio se não encontrado). Não lê a senha.
+Function LerEnv
+  Push $R2
+  Push $R3
+  Push $R4
+  Push $R5
+  StrCpy $EnvValor ""
+  ClearErrors
+  FileOpen $R2 "$INSTDIR\.env" r
+  IfErrors lerenv_fim
+  StrLen $R5 "$EnvChave="
+  lerenv_loop:
+    ClearErrors
+    FileRead $R2 $R3
+    IfErrors lerenv_fecha
+    StrCpy $R4 $R3 $R5
+    StrCmp $R4 "$EnvChave=" 0 lerenv_loop
+    StrCpy $EnvValor $R3 "" $R5
+    lerenv_trim:
+      StrCpy $R4 $EnvValor 1 -1
+      StrCmp $R4 "$\r" +2
+      StrCmp $R4 "$\n" 0 lerenv_fecha
+      StrCpy $EnvValor $EnvValor -1
+      Goto lerenv_trim
+  lerenv_fecha:
+    FileClose $R2
+  lerenv_fim:
+  ClearErrors
+  Pop $R5
+  Pop $R4
+  Pop $R3
+  Pop $R2
+FunctionEnd
+
+!macro PreencherDoEnv CHAVE VAR
+  StrCpy $EnvChave "${CHAVE}"
+  Call LerEnv
+  ${If} $EnvValor != ""
+    StrCpy ${VAR} $EnvValor
+  ${EndIf}
+!macroend
+
 ; ---------------------------------------------------------------- Python
 !macro TentarPython HIVE VER
   ${If} $PY == ""
@@ -213,6 +260,16 @@ Function .onInit
   StrCpy $DbPass ""
   StrCpy $DbName "api_db"
   StrCpy $ApiPort "8000"
+  StrCpy $DbSchema "api_cadastros"
+  ${If} ${FileExists} "$INSTDIR\.env"
+    !insertmacro PreencherDoEnv "DB_HOST" $DbHost
+    !insertmacro PreencherDoEnv "DB_PORT" $DbPort
+    !insertmacro PreencherDoEnv "DB_USER" $DbUser
+    !insertmacro PreencherDoEnv "DB_NAME" $DbName
+    !insertmacro PreencherDoEnv "DB_SCHEMA" $DbSchema
+    !insertmacro PreencherDoEnv "API_PORT" $ApiPort
+    !insertmacro Log "Configuração anterior encontrada: servidor=$DbHost porta=$DbPort banco=$DbName schema=$DbSchema portaAPI=$ApiPort"
+  ${EndIf}
 FunctionEnd
 
 ; ---------------------------------------------------------------- Página do banco
@@ -224,34 +281,38 @@ Function PaginaBanco
     Abort
   ${EndIf}
 
-  ${NSD_CreateLabel} 0 0 100% 20u "A API cria o banco abaixo (se não existir) e as tabelas dela. Nenhum outro banco é alterado."
+  ${NSD_CreateLabel} 0 0 100% 20u "O banco é criado se não existir. Documentação da API: http://localhost:<porta da API>/docs"
   Pop $0
 
-  ${NSD_CreateLabel} 0 26u 30% 12u "Servidor:"
+  ${NSD_CreateLabel} 0 24u 30% 12u "Servidor:"
   Pop $0
-  ${NSD_CreateText} 32% 24u 45% 12u "$DbHost"
+  ${NSD_CreateText} 32% 22u 45% 12u "$DbHost"
   Pop $hHost
-  ${NSD_CreateLabel} 0 44u 30% 12u "Porta:"
+  ${NSD_CreateLabel} 0 40u 30% 12u "Porta:"
   Pop $0
-  ${NSD_CreateNumber} 32% 42u 20% 12u "$DbPort"
+  ${NSD_CreateNumber} 32% 38u 20% 12u "$DbPort"
   Pop $hPort
-  ${NSD_CreateLabel} 0 62u 30% 12u "Usuário:"
+  ${NSD_CreateLabel} 0 56u 30% 12u "Usuário:"
   Pop $0
-  ${NSD_CreateText} 32% 60u 45% 12u "$DbUser"
+  ${NSD_CreateText} 32% 54u 45% 12u "$DbUser"
   Pop $hUser
-  ${NSD_CreateLabel} 0 80u 30% 12u "Senha:"
+  ${NSD_CreateLabel} 0 72u 30% 12u "Senha:"
   Pop $0
-  ${NSD_CreatePassword} 32% 78u 45% 12u "$DbPass"
+  ${NSD_CreatePassword} 32% 70u 45% 12u "$DbPass"
   Pop $hPass
-  ${NSD_CreateLabel} 0 98u 30% 12u "Nome do banco da API:"
+  ${NSD_CreateLabel} 0 88u 30% 12u "Nome do banco:"
   Pop $0
-  ${NSD_CreateText} 32% 96u 45% 12u "$DbName"
+  ${NSD_CreateText} 32% 86u 45% 12u "$DbName"
   Pop $hName
-  ${NSD_CreateLabel} 0 116u 30% 12u "Porta da API:"
+  ${NSD_CreateLabel} 0 104u 30% 12u "Schema da API:"
   Pop $0
-  ${NSD_CreateNumber} 32% 114u 20% 12u "$ApiPort"
+  ${NSD_CreateText} 32% 102u 45% 12u "$DbSchema"
+  Pop $hSchema
+  ${NSD_CreateLabel} 0 120u 30% 12u "Porta da API:"
+  Pop $0
+  ${NSD_CreateNumber} 32% 118u 20% 12u "$ApiPort"
   Pop $hApiPort
-  ${NSD_CreateLabel} 0 134u 100% 12u "A API ficará em http://localhost:<porta da API>/docs"
+  ${NSD_CreateLabel} 0 134u 100% 12u "As tabelas da API ficam só no schema acima; outras tabelas do banco não são alteradas."
   Pop $0
 
   ${NSD_SetFocus} $hPass
@@ -264,13 +325,15 @@ Function PaginaBancoSair
   ${NSD_GetText} $hUser $DbUser
   ${NSD_GetText} $hPass $DbPass
   ${NSD_GetText} $hName $DbName
+  ${NSD_GetText} $hSchema $DbSchema
   ${NSD_GetText} $hApiPort $ApiPort
   ${If} $DbHost == ""
   ${OrIf} $DbPort == ""
   ${OrIf} $DbUser == ""
   ${OrIf} $DbName == ""
+  ${OrIf} $DbSchema == ""
   ${OrIf} $ApiPort == ""
-    MessageBox MB_ICONEXCLAMATION "Preencha servidor, porta, usuário, nome do banco e porta da API."
+    MessageBox MB_ICONEXCLAMATION "Preencha servidor, porta, usuário, nome do banco, schema e porta da API."
     Abort
   ${EndIf}
   ${If} $DbPass == ""
@@ -278,7 +341,7 @@ Function PaginaBancoSair
     Abort
   ${EndIf}
   StrLen $1 $DbPass
-  !insertmacro Log "Conexão escolhida: servidor=$DbHost porta=$DbPort usuário=$DbUser banco=$DbName portaAPI=$ApiPort senha=($1 caracteres, não registrada)"
+  !insertmacro Log "Conexão escolhida: servidor=$DbHost porta=$DbPort usuário=$DbUser banco=$DbName schema=$DbSchema portaAPI=$ApiPort senha=($1 caracteres, não registrada)"
 FunctionEnd
 
 ; ---------------------------------------------------------------- Instalação
@@ -343,6 +406,7 @@ Section "API de Cadastros como serviço (obrigatório)" SecApp
   FileWrite $9 "DB_USER=$DbUser$\r$\n"
   FileWrite $9 "DB_PASSWORD='$1'$\r$\n"
   FileWrite $9 "DB_NAME=$DbName$\r$\n"
+  FileWrite $9 "DB_SCHEMA=$DbSchema$\r$\n"
   FileWrite $9 "DB_TEST_NAME=api_test$\r$\n"
   FileWrite $9 "API_HOST=127.0.0.1$\r$\n"
   FileWrite $9 "API_PORT=$ApiPort$\r$\n"
@@ -373,13 +437,16 @@ Section "API de Cadastros como serviço (obrigatório)" SecApp
 
   ; ---- banco de dados ----
   StrCpy $8 "ok"
-  !insertmacro Rodar "Conectando ao PostgreSQL e preparando o banco $DbName (tabelas e migrações)" '"$INSTDIR\.venv\Scripts\python.exe" "$INSTDIR\preparar_bancos.py" --instalador'
+  !insertmacro Rodar "Conectando ao PostgreSQL e preparando o banco $DbName, schema $DbSchema (tabelas e migrações)" '"$INSTDIR\.venv\Scripts\python.exe" "$INSTDIR\preparar_bancos.py" --instalador'
   ${If} $0 != 0
     !insertmacro Log "AVISO: o banco não foi preparado (código $0); a API foi instalada mesmo assim"
   ${EndIf}
   ${If} $0 == 2
     StrCpy $8 "erro"
     MessageBox MB_ICONEXCLAMATION "A API foi instalada, mas o PostgreSQL recusou o usuário ou a senha.$\r$\n$\r$\nUse o atalho $\"Configurar conexão$\" no Menu Iniciar para corrigir e depois $\"Reiniciar API$\"."
+  ${ElseIf} $0 == 4
+    StrCpy $8 "erro"
+    MessageBox MB_ICONEXCLAMATION "O banco $DbName já tem, no schema $DbSchema, tabelas clientes/produtos/fornecedores de OUTRO sistema.$\r$\n$\r$\nNada foi alterado. Rode o instalador de novo e use outro schema (recomendado: api_cadastros) ou outro banco."
   ${ElseIf} $0 == 3
     StrCpy $8 "erro"
     MessageBox MB_ICONEXCLAMATION "A API foi instalada, mas não encontrei o PostgreSQL em $DbHost:$DbPort.$\r$\n$\r$\nConfira se o servidor está ligado e use o atalho $\"Configurar conexão$\" para ajustar."

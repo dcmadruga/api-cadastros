@@ -22,12 +22,13 @@ os.environ["DB_NAME"] = NOME_BANCO_TESTE
 import pytest
 from fastapi.testclient import TestClient
 
-from app.database import Base, engine
+from app.database import Base, engine, garantir_schema
 from app.main import app
 
 
 @pytest.fixture(autouse=True)
 def banco_limpo():
+    garantir_schema(engine)
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
     yield

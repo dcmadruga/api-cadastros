@@ -1,20 +1,68 @@
+import asyncio
+import logging
+import os
+import time
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI, HTTPException, Query, status
+from fastapi import Depends, FastAPI, HTTPException, Query, Request, status
+from fastapi.responses import JSONResponse
 from sqlalchemy import select
+from sqlalchemy.exc import DBAPIError, OperationalError
 from sqlalchemy.orm import Session
 
 from . import models, schemas
 from .crud import criar_router
-from .database import Base, engine, get_db
+from .database import SCHEMA, engine, get_db
+from .estado import ESTADO
+from .estrutura import TabelasDeOutroSistema, preparar_estrutura
 from .versao import VERSAO
+
+log = logging.getLogger("api")
+INTERVALO_TENTATIVA = int(os.getenv("DB_RETRY_SECONDS", "30"))
+
+
+def _resumo_erro(erro: Exception) -> str:
+    texto = str(getattr(erro, "orig", None) or erro).strip().splitlines()
+    return texto[0] if texto else type(erro).__name__
+
+
+def tentar_preparar_banco() -> bool:
+    destino = f"{os.getenv('DB_HOST', 'localhost')}:{os.getenv('DB_PORT', '5432')}/{os.getenv('DB_NAME', 'api_db')} (schema {SCHEMA})"
+    try:
+        with engine.connect() as conn:
+            versao_pg = conn.exec_driver_sql("show server_version").scalar()
+        preparar_estrutura(engine, saida=log.info)
+        ESTADO.update(banco="ok", detalhe=f"PostgreSQL {versao_pg} em {destino}")
+        log.info("Banco pronto: %s", ESTADO["detalhe"])
+        return True
+    except Exception as erro:  # noqa: BLE001
+        bloqueado = isinstance(erro, TabelasDeOutroSistema)
+        detalhe = f"{destino}: {_resumo_erro(erro)}"
+        mudou = detalhe != ESTADO.get("detalhe")
+        ESTADO.update(banco="bloqueado" if bloqueado else "indisponivel", detalhe=detalhe)
+        agora = time.monotonic()
+        if mudou or agora - ESTADO.get("ultimo_aviso", 0) > 600:
+            ESTADO["ultimo_aviso"] = agora
+            log.error("Banco indisponível — %s. Nova tentativa a cada %ss; a API continua no ar.",
+                      detalhe, INTERVALO_TENTATIVA)
+        return False
+
+
+async def _vigiar_banco():
+    while not await asyncio.to_thread(tentar_preparar_banco):
+        await asyncio.sleep(INTERVALO_TENTATIVA)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Cria as tabelas no PostgreSQL caso ainda não existam
-    Base.metadata.create_all(bind=engine)
+    # Prepara o banco em segundo plano: se ele estiver fora do ar, a API sobe mesmo assim
+    # e fica tentando de novo, respondendo 503 com o motivo enquanto isso.
+    tarefa = None
+    if not await asyncio.to_thread(tentar_preparar_banco):
+        tarefa = asyncio.create_task(_vigiar_banco())
     yield
+    if tarefa:
+        tarefa.cancel()
 
 
 app = FastAPI(
@@ -72,6 +120,17 @@ app.include_router(criar_router(
 ))
 
 
-@app.get("/", tags=["Status"], summary="Verificar se a API está no ar")
+@app.exception_handler(OperationalError)
+@app.exception_handler(DBAPIError)
+async def banco_fora_do_ar(request: Request, erro: Exception):
+    codigo = getattr(getattr(erro, "orig", None), "sqlstate", None) or ""
+    if isinstance(erro, OperationalError) or codigo.startswith("08") or codigo == "42P01":
+        return JSONResponse(status_code=503, content={
+            "detail": f"Banco de dados indisponível: {_resumo_erro(erro)}"})
+    raise erro
+
+
+@app.get("/", tags=["Status"], summary="Verificar se a API está no ar e o estado do banco")
 def status_api():
-    return {"status": "ok", "documentacao": "/docs"}
+    return {"status": "ok", "versao": VERSAO, "banco": ESTADO["banco"],
+            "banco_detalhe": ESTADO["detalhe"], "documentacao": "/docs"}

@@ -2,6 +2,12 @@
 
 Formato: cada versão lista o que mudou. A versão oficial fica em `api/app/versao.py`.
 
+## [1.3.0] - 2026-10-24
+- **Schema próprio:** as tabelas da API ficam num schema separado (padrão `api_cadastros`, configurável em `DB_SCHEMA`). Assim a API pode usar um banco que já tenha tabelas de outro sistema (ex.: `base_teste`) sem tocar nelas.
+- **Trava de segurança:** se o schema escolhido já tiver tabelas `clientes`, `produtos` ou `fornecedores` de outro sistema, a API e o instalador recusam e não alteram nada (código 4 no instalador).
+- **API resiliente:** se o banco estiver fora do ar ou não existir, a API continua ligada, responde 503 com o motivo e tenta de novo sozinha a cada 30 s. A rota `/` mostra o estado do banco.
+- Instalador: novo campo "Schema da API"; em atualizações, a tela de conexão vem preenchida com a configuração atual (menos a senha).
+
 ## [1.2.2] - 2026-10-24
 - Registro do serviço (`logs\api.log`) mais legível: data e hora em cada linha, versão da API na partida, erros numa linha clara e, quando o mesmo erro se repete, só uma linha curta ("repetido, Nª vez") em vez do rastro completo. O arquivo é renovado ao passar de 5 MB.
 - O instalador agora testa se a API responde depois de ligar o serviço e copia as últimas linhas do registro do serviço para o `instalacao.txt`.
