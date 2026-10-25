@@ -217,6 +217,16 @@ FunctionEnd
   ${EndIf}
 !macroend
 
+!macro OpcaoLinha OPCAO VAR
+  ClearErrors
+  ${GetOptions} $1 "${OPCAO}" $2
+  ${IfNot} ${Errors}
+  ${AndIf} $2 != ""
+    StrCpy ${VAR} $2
+  ${EndIf}
+  ClearErrors
+!macroend
+
 Function .onInit
   SetShellVarContext all
   SetRegView 64
@@ -269,6 +279,19 @@ Function .onInit
     !insertmacro PreencherDoEnv "DB_SCHEMA" $DbSchema
     !insertmacro PreencherDoEnv "API_PORT" $ApiPort
     !insertmacro Log "Configuração anterior encontrada: servidor=$DbHost porta=$DbPort banco=$DbName schema=$DbSchema portaAPI=$ApiPort"
+  ${EndIf}
+
+  ; opções de linha de comando têm prioridade sobre o .env
+  ; ex.: Instalador.exe /BANCO=base_teste /SCHEMA=api_cadastros /SERVIDOR=localhost /PORTA=5432
+  ${GetParameters} $1
+  ${If} $1 != ""
+    !insertmacro Log "Opções recebidas: $1"
+    !insertmacro OpcaoLinha "/SERVIDOR=" $DbHost
+    !insertmacro OpcaoLinha "/PORTA=" $DbPort
+    !insertmacro OpcaoLinha "/USUARIO=" $DbUser
+    !insertmacro OpcaoLinha "/BANCO=" $DbName
+    !insertmacro OpcaoLinha "/SCHEMA=" $DbSchema
+    !insertmacro OpcaoLinha "/PORTAAPI=" $ApiPort
   ${EndIf}
 FunctionEnd
 
@@ -338,6 +361,14 @@ Function PaginaBancoSair
   ${EndIf}
   ${If} $DbPass == ""
     MessageBox MB_YESNO|MB_ICONQUESTION "A senha está em branco. Continuar mesmo assim?" IDYES +2
+    Abort
+  ${EndIf}
+  ; confirmação explícita do banco, para não seguir com o valor preenchido sem perceber
+  StrCpy $0 ""
+  MessageBox MB_YESNO|MB_ICONQUESTION "A API vai usar:$\r$\n$\r$\n    Banco:  $DbName$\r$\n    Schema:  $DbSchema$\r$\n    Servidor:  $DbHost:$DbPort$\r$\n$\r$\nEstá certo? (Não = voltar e corrigir)" IDYES +2
+    StrCpy $0 "corrigir"
+  ${If} $0 == "corrigir"
+    !insertmacro Log "Usuário pediu para corrigir a conexão (banco=$DbName)"
     Abort
   ${EndIf}
   StrLen $1 $DbPass

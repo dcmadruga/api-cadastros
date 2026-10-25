@@ -2,6 +2,10 @@
 
 Formato: cada versão lista o que mudou. A versão oficial fica em `api/app/versao.py`.
 
+## [1.3.1] - 2026-10-25
+- Instalador: aceita opções na linha de comando que já preenchem a tela de conexão (`/BANCO=`, `/SCHEMA=`, `/SERVIDOR=`, `/PORTA=`, `/USUARIO=`, `/PORTAAPI=`), com prioridade sobre a configuração anterior. Ex.: `Instalador-API-Cadastros-1.3.1.exe /BANCO=base_teste`.
+- Instalador: ao avançar da tela de conexão, pede confirmação mostrando banco, schema e servidor que a API vai usar (Não = volta para corrigir).
+
 ## [1.3.0] - 2026-10-24
 - **Schema próprio:** as tabelas da API ficam num schema separado (padrão `api_cadastros`, configurável em `DB_SCHEMA`). Assim a API pode usar um banco que já tenha tabelas de outro sistema (ex.: `base_teste`) sem tocar nelas.
 - **Trava de segurança:** se o schema escolhido já tiver tabelas `clientes`, `produtos` ou `fornecedores` de outro sistema, a API e o instalador recusam e não alteram nada (código 4 no instalador).
